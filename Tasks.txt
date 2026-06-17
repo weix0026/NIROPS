@@ -1,1 +1,21 @@
 Tasks:
+
+FIRST:
+Correct date fields, format is YYYYMMDD  and  HHMM, I believe the columns are called TRUEDATE and TRUETIME
+
+YYYY must be 2013 through 2025, MM must be 01 through 12, DD must be ~ Jan 31, Feb 28/29, Mar 31, Apr 30, May 31, Jun 30, Jul 31, Aug 31, Sep 30, Oct 31, Nov 30, Dec 31
+
+HHMM must be 00 through 23 and mm must be 00 through 59
+
+I would start with the year 2025 and work backwards
+
+NEXT:
+
+Check that all ALL_NIROPS_2013_2025_Heat_Perimeter contain all of the Scattered and Intense Heat for each day (NOTE not all days have intense heat or scattered heat and this is normal, for example one day may only have scattered heat because that is just what the fire is doing on that perticular day)
+
+NEXT:
+Check area progressions, focus on ALL_NIROPS_2013_2025_Heat_Perimeter, Make sure that the fire area is increasing (for the most part, there may be a slight, ie few acre decrease in area, but a fire cant go from 100,000 acres to 5,000 acres for example) for each timestamp
+
+...
+
+
