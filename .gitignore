@@ -1,0 +1,32 @@
+# === Python virtual environments ===
+.venv/
+.name
+.env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+*.xml
+*.yml
+.vscode/
+.ipynb_checkpoints/
+runs/
+out/
+
+# === Data files ===
+*.db
+*.sqlite
+*.jsonl
+*.geojson
+*.log
+*.tif
+*.tiff
+*.zip
+*.bin
+*.dat
+*.gdb
+*.pth
+*.lp
+.DS_Store
+.aider*
