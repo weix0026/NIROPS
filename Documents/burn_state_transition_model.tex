@@ -7,27 +7,34 @@
 \usepackage{xcolor}
 \usepackage{hyperref}
 
-\title{Framing a Spatiotemporal Burn-State Transition Model}
+\title{A Transparent Spatiotemporal Framework for Modeling Burn-State Transitions}
 \author{}
 \date{}
+
+
 
 \begin{document}
 
 \maketitle
 
+\begin{center}
+\textcolor{red}{\textbf{Working Document: This document was generated with assistance from AI and is currently under validation and review.}}
+\end{center}
+
+
 \section{Problem Overview}
 
-We consider a landscape represented as a raster grid observed daily. Each pixel has one of five possible burn states:
+The \textbf{objective} of this project is to model daily burn-state transitions for each pixel in a raster landscape. Rather than only predicting the burn state of a pixel at the next time step, this project focuses on predicting the transition from the current burn state to the next-day burn state. This transition-based formulation provides greater transparency because it directly represents how pixels move among different burn states and allows the model to identify the environmental, weather, and neighborhood conditions associated with each type of state change.
+
+Each pixel can take one of five possible burn states:
 
 \begin{itemize}
-    \item OU: outside unburned
-    \item IH: intense heat
-    \item SH: scattered heat
-    \item OH: isolated heat
-    \item IU: interior unburned
+    \item OU: outside unburned,
+    \item IH: intense heat,
+    \item SH: scattered heat,
+    \item OH: isolated heat,
+    \item IU: interior unburned.
 \end{itemize}
-
-The objective is to model the burn state of each pixel at day $t$ as a function of its own previous burn states, the previous burn states of its eight neighboring pixels, static environmental variables such as fuels and topography, and recent weather or fire-weather conditions.
 
 Let
 
@@ -35,106 +42,224 @@ Let
 Y_{i,t} \in \{OU, IH, SH, OH, IU\}
 \]
 
-denote the burn state of pixel $i$ at day $t$. Let $N(i)$ denote the eight-cell neighborhood around pixel $i$, and let $k$ denote the number of lag days used as history. A general modeling formulation is:
+denote the burn state of pixel $i$ on day $t$. The primary response variable is the one-day burn-state transition:
 
 \[
-P\left(Y_{i,t} \mid Y_{i,t-1:t-k},\, Y_{N(i),t-1:t-k},\, X_i,\, W_{i,t-1:t-k}\right),
+T_{i,t \rightarrow t+1} = Y_{i,t} \rightarrow Y_{i,t+1}.
 \]
 
-where $X_i$ represents static environmental covariates and $W_{i,t-1:t-k}$ represents lagged weather or fire-weather variables.
-
-\section{Ten-Step Framing}
-
-\subsection*{Step 1: Define the Problem as a Spatiotemporal State-Transition Model}
-
-Frame the problem as a supervised spatiotemporal classification problem on a raster lattice. Each pixel is a cell, each day is a time step, and the response variable is the burn state of the pixel at the next day.
-
-The daily update rule can be written conceptually as:
+For example, possible transitions include
 
 \[
-\text{state tomorrow} =
-f(\text{recent focal-pixel state history},
-\text{recent neighborhood state history},
-\text{environment},
-\text{weather}).
+OU \rightarrow IH, \quad
+OU \rightarrow SH, \quad
+IH \rightarrow IU, \quad
+SH \rightarrow IU, \quad
+IU \rightarrow IU.
 \]
 
-This is similar to a probabilistic cellular automaton, except that the transition rule is learned from data rather than manually specified.
+This project does not focus on developing a black-box deep-learning model. Instead, it focuses on developing a \textbf{transparent descriptive and predictive statistical framework} to help explain how burn states transition over time and how these transitions are influenced by static landscape characteristics, dynamic weather conditions, and the burn-state histories of neighboring cells.
 
-\subsection*{Step 2: Define the Prediction Target}
+\section{Transition-Based Modeling Framework}
 
-There are two main choices for the response variable.
+Let $N(i)$ denote the eight-cell neighborhood surrounding pixel $i$, and let $k$ denote the number of lag days used as historical information. Let $X_i$ represent static environmental covariates for pixel $i$, such as fuel type, topography, vegetation, slope, aspect, elevation, and other landscape variables. Let $W^{obs}_{i,t:t-k}$ represent observed weather or fire-weather conditions from day $t-k$ through day $t$, and let $W^{fcst}_{i,t+1}$ represent forecasted weather or fire-weather conditions for the prediction day $t+1$.
 
-\paragraph{Direct state prediction.}
-
-Predict the burn state at day $t$:
+For one-day-ahead transition prediction, the model can be written as:
 
 \[
-Y_{i,t}.
+P\left(
+T_{i,t \rightarrow t+1}
+\mid
+Y_{i,t:t-k},\,
+Y_{N(i),t:t-k},\,
+X_i,\,
+W^{obs}_{i,t:t-k},\,
+W^{fcst}_{i,t+1}
+\right).
 \]
 
-This creates a five-class classification problem with classes OU, IH, SH, OH, and IU.
-
-\paragraph{State-transition prediction.}
-
-Predict the transition from the previous day to the current day:
+Equivalently,
 
 \[
-Y_{i,t-1} \rightarrow Y_{i,t}.
+P\left(
+Y_{i,t} \rightarrow Y_{i,t+1}
+\mid
+Y_{i,t:t-k},\,
+Y_{N(i),t:t-k},\,
+X_i,\,
+W^{obs}_{i,t:t-k},\,
+W^{fcst}_{i,t+1}
+\right).
 \]
 
-This framing is often more interpretable because fire behavior is fundamentally about state transitions, such as OU $\rightarrow$ IH or IH $\rightarrow$ IU.
+This formulation makes the current burn state $Y_{i,t}$ explicit and models the probability that the pixel transitions into a new state on day $t+1$. During model training, historical burn-state maps provide observed transitions from $Y_{i,t}$ to $Y_{i,t+1}$. During inference, the trained model uses the most recent observed burn states, recent observed weather, static environmental covariates, and forecasted weather for day $t+1$ to forecast the transition of each pixel.
 
-\subsection*{Step 3: Represent the Local Spatiotemporal Window}
+\section{Step 1: Define the Problem as a Supervised Spatiotemporal Transition Problem}
 
-For each pixel-day, extract a local space-time cube containing the focal pixel and its eight neighbors over the previous $k$ days. For example, using a $3 \times 3$ neighborhood and five lag days gives a local input window of size:
+The problem is framed as a supervised spatiotemporal classification problem on a raster lattice. Each pixel is treated as a cell, each day is treated as a time step, and the response variable is the transition from the pixel's current burn state to its next-day burn state.
+
+The one-day-ahead transition rule can be written conceptually as:
+
+\[
+\begin{aligned}
+\text{transition from day } t \text{ to day } t+1 =
+f(&\text{recent focal-pixel burn-state history through day } t,\\
+  &\text{recent neighborhood burn-state history through day } t,\\
+  &\text{static environmental covariates},\\
+  &\text{observed recent weather through day } t,\\
+  &\text{forecasted weather for day } t+1).
+\end{aligned}
+\]
+
+This formulation is similar to a probabilistic cellular automaton because each pixel's next state depends on its own state history and the state history of nearby cells. However, the transition rule is learned from data rather than manually specified, and it explicitly incorporates both static landscape variables and dynamic weather information.
+
+\section{Step 2: Define the Prediction Target as a State Transition}
+
+The prediction target is the transition from the current day to the next day:
+
+\[
+Y_{i,t} \rightarrow Y_{i,t+1}.
+\]
+
+This is preferable to predicting only $Y_{i,t+1}$ because it preserves the starting state of each pixel. For example, predicting that a pixel is IH on day $t+1$ is informative, but predicting that it changed from OU to IH provides more information about fire spread and ignition. Similarly, predicting IH $\rightarrow$ IU describes a transition from active heat to interior unburned, which has a different interpretation from OU $\rightarrow$ IU or IU $\rightarrow$ IU.
+
+The transition-based response can be represented as a multi-class categorical variable. Since there are five possible burn states, there are up to
+
+\[
+5 \times 5 = 25
+\]
+
+possible one-day transitions. Some transitions may be rare or physically unlikely, but they can still be retained initially and later grouped or filtered based on empirical frequency and interpretation.
+
+\section{Step 3: Represent the Local Spatiotemporal Window}
+
+For each pixel-day observation, a local space-time window is extracted. This window contains the focal pixel and its eight neighboring pixels over the previous $k$ days. For example, a $3 \times 3$ neighborhood and a five-day lag window gives a local input window of size:
 
 \[
 3 \times 3 \times 5.
 \]
 
-Because burn state is categorical, states can be encoded as integer labels or one-hot vectors. A one-hot encoding is often preferable for machine-learning models:
+The focal-pixel history is represented as
 
 \[
-OU = [1,0,0,0,0], \quad
-IH = [0,1,0,0,0], \quad
+Y_{i,t:t-k},
+\]
+
+and the neighborhood history is represented as
+
+\[
+Y_{N(i),t:t-k}.
+\]
+
+Burn states can be encoded as integer categories or one-hot vectors. A one-hot encoding is useful because it avoids imposing artificial numerical order on the five burn states:
+
+\[
+OU = [1,0,0,0,0],
+\quad
+IH = [0,1,0,0,0],
+\quad
 SH = [0,0,1,0,0],
 \]
 
 \[
-OH = [0,0,0,1,0], \quad
+OH = [0,0,0,1,0],
+\quad
 IU = [0,0,0,0,1].
 \]
 
-\subsection*{Step 4: Organize Predictors into Three Groups}
-
-The predictors can be organized into three groups.
-
-\paragraph{Burn-state history.}
-Include the previous states of the focal pixel and its neighboring pixels over the lag window. Useful derived features include the number of IH neighbors, the number of SH neighbors, whether any neighbor was burning, and days since a nearby pixel burned.
-
-\paragraph{Static environmental variables.}
-Include spatial covariates such as fuel type, vegetation, elevation, slope, aspect, canopy cover, land cover, distance to roads or firelines, and other landscape variables.
-
-\paragraph{Weather and fire-weather variables.}
-Include lagged or summarized weather variables such as temperature, relative humidity, wind speed, wind direction, precipitation, vapor pressure deficit, energy release component, and fuel moisture. Useful summaries include mean conditions over the past three days, maximum wind speed over the lag window, minimum relative humidity, and cumulative precipitation.
-
-\subsection*{Step 5: Begin with a Simple Markov Baseline}
-
-Start with a simple transition model based only on the previous state of the focal pixel:
+The transition target can also be encoded categorically. For example:
 
 \[
-P(Y_{i,t} \mid Y_{i,t-1}).
+OU \rightarrow OU, \quad
+OU \rightarrow IH, \quad
+OU \rightarrow SH, \quad
+\ldots, \quad
+IU \rightarrow IU.
 \]
 
-This produces a basic transition matrix showing how likely each state is to persist or change to another state.
+\section{Step 4: Organize Predictors into Transparent Feature Groups}
+
+The predictors can be organized into four interpretable groups.
+
+\subsection*{Focal-Pixel Burn-State History}
+
+The first group describes the recent burn-state history of the focal pixel. These variables answer questions such as: What state is the pixel currently in? How long has it been in this state? Has it recently transitioned from another state?
+
+Examples include:
+
+\begin{itemize}
+    \item current focal-pixel state $Y_{i,t}$,
+    \item focal-pixel states at previous lag days $Y_{i,t-1}, Y_{i,t-2}, \ldots, Y_{i,t-k}$,
+    \item number of days since the pixel first entered an active heat state,
+    \item number of days since the pixel last changed state.
+\end{itemize}
+
+\subsection*{Neighborhood Burn-State History}
+
+The second group describes the recent burn-state history of the eight neighboring pixels. These variables represent local spatial dependence and potential fire spread from nearby cells.
+
+Examples include:
+
+\begin{itemize}
+    \item number of IH neighbors on day $t$,
+    \item number of SH neighbors on day $t$,
+    \item number of OH neighbors on day $t$,
+    \item fraction of neighbors in active heat states,
+    \item whether any neighboring cell was in IH, SH, or OH during the previous $k$ days,
+    \item number of neighboring cells that transitioned into active heat states during the previous $k$ days.
+\end{itemize}
+
+\subsection*{Static Environmental Covariates}
+
+The third group contains static or slowly changing environmental variables. These variables help explain why transitions may be more likely in some locations than others.
+
+Examples include:
+
+\begin{itemize}
+    \item fuel type,
+    \item vegetation class,
+    \item elevation,
+    \item slope,
+    \item aspect,
+    \item canopy cover,
+    \item topographic position,
+    \item distance to roads, firelines, or water bodies.
+\end{itemize}
+
+\subsection*{Observed and Forecasted Weather Conditions}
+
+The fourth group contains dynamic weather or fire-weather variables. Historical observed weather is used to describe recent conditions, while forecasted weather is used for one-day-ahead inference.
+
+Examples include:
+
+\begin{itemize}
+    \item observed temperature over the previous $k$ days,
+    \item observed relative humidity over the previous $k$ days,
+    \item observed wind speed and wind direction through day $t$,
+    \item cumulative precipitation over the previous $k$ days,
+    \item forecasted wind speed for day $t+1$,
+    \item forecasted wind direction for day $t+1$,
+    \item forecasted relative humidity and temperature for day $t+1$.
+\end{itemize}
+
+Wind direction may be especially important because a burning neighbor located upwind of a focal pixel may have a different influence than a burning neighbor located downwind.
+
+\section{Step 5: Begin with a Transition Matrix Baseline}
+
+A useful first baseline is an empirical transition matrix:
+
+\[
+P(Y_{i,t+1} \mid Y_{i,t}).
+\]
+
+This transition matrix estimates the probability of each next-day state conditional only on the current state.
 
 \begin{table}[h]
 \centering
 \caption{Example structure of a burn-state transition matrix.}
 \begin{tabular}{lccccc}
 \toprule
-From / To & OU & IH & SH & OH & IU \\
+Current State / Next State & OU & IH & SH & OH & IU \\
 \midrule
 OU &  &  &  &  &  \\
 IH &  &  &  &  &  \\
@@ -145,68 +270,87 @@ IU &  &  &  &  &  \\
 \end{tabular}
 \end{table}
 
-This baseline is useful because it provides a simple benchmark for all more complex models.
+This baseline provides a simple and interpretable benchmark. It answers questions such as: How often does OU remain OU? How often does OU transition into IH? How quickly do IH, SH, or OH pixels transition into IU?
 
-\subsection*{Step 6: Add Neighborhood Information}
+\section{Step 6: Add Neighborhood Transition Information}
 
-Next, include the states of the eight adjacent pixels. A useful formulation is:
-
-\[
-P(Y_{i,t} \mid Y_{i,t-1},\, Y_{N(i),t-1}).
-\]
-
-Instead of including every neighbor state directly, it may be useful to summarize the neighborhood with count-based features, such as:
-
-\begin{itemize}
-    \item number of IH neighbors at day $t-1$,
-    \item number of SH neighbors at day $t-1$,
-    \item number of OH neighbors at day $t-1$,
-    \item number of IU neighbors at day $t-1$,
-    \item whether any neighbor was in an active heat state,
-    \item fraction of neighbors in active heat states.
-\end{itemize}
-
-\subsection*{Step 7: Add Lagged Neighborhood History}
-
-Extend the model to include several previous days of focal-pixel and neighborhood history:
+After the simple transition matrix, the next step is to include neighborhood information:
 
 \[
-P(Y_{i,t} \mid Y_{i,t-1:t-k},\, Y_{N(i),t-1:t-k}).
-\]
-
-Useful lagged features include the maximum number of IH neighbors over the last three days, the mean number of active-heat neighbors over the previous five days, and the number of days since the nearest neighboring heat detection.
-
-\subsection*{Step 8: Add Fuels, Topography, and Weather}
-
-After establishing a state-history and neighborhood baseline, include environmental and weather covariates:
-
-\[
-P\left(Y_{i,t} \mid
-Y_{i,t-1:t-k},
-Y_{N(i),t-1:t-k},
-X_i,
-W_{i,t-1:t-k}
+P\left(
+Y_{i,t} \rightarrow Y_{i,t+1}
+\mid
+Y_{i,t},\,
+Y_{N(i),t}
 \right).
 \]
 
-At this stage, the problem becomes a full spatiotemporal supervised learning problem. Weather variables should be aligned carefully with the burn-state time steps. Wind direction may be especially important because an upwind burning neighbor is not equivalent to a downwind burning neighbor.
+This allows the transition probability of the focal pixel to depend on the current states of the surrounding cells. For example, the transition OU $\rightarrow$ IH may be more likely when one or more neighboring cells are already in IH, SH, or OH. Similarly, the transition IH $\rightarrow$ IU may depend on how long neighboring cells have been burning or whether the local fire front has already passed.
 
-\subsection*{Step 9: Choose an Initial Model Class}
+Neighborhood variables can be represented directly using the eight neighboring states or summarized into interpretable count-based features.
 
-A practical first modeling approach is a tabular multiclass classifier using engineered features. Suitable initial models include:
+\section{Step 7: Add Lagged Transition History}
+
+The model can then be extended to include recent state histories and recent transition histories:
+
+\[
+P\left(
+Y_{i,t} \rightarrow Y_{i,t+1}
+\mid
+Y_{i,t:t-k},\,
+Y_{N(i),t:t-k}
+\right).
+\]
+
+This step is important because fire behavior often depends not only on the current configuration but also on recent progression. For example, a pixel with an IH neighbor yesterday may have a different transition probability than a pixel with an IH neighbor five days ago.
+
+Useful lagged transition features include:
+
+\begin{itemize}
+    \item whether the focal pixel changed state during the previous $k$ days,
+    \item number of neighboring cells that transitioned from OU to IH during the previous $k$ days,
+    \item number of neighboring cells that transitioned from active heat to IU,
+    \item days since the nearest active heat transition,
+    \item maximum number of active-heat neighbors during the previous $k$ days.
+\end{itemize}
+
+\section{Step 8: Add Fuels, Topography, and Weather}
+
+The full transition model incorporates focal-pixel history, neighborhood history, static environmental variables, observed weather, and forecasted weather:
+
+\[
+P\left(
+Y_{i,t} \rightarrow Y_{i,t+1}
+\mid
+Y_{i,t:t-k},\,
+Y_{N(i),t:t-k},\,
+X_i,\,
+W^{obs}_{i,t:t-k},\,
+W^{fcst}_{i,t+1}
+\right).
+\]
+
+This formulation supports both descriptive and predictive goals. Descriptively, the model can identify which conditions are associated with specific burn-state transitions. Predictively, the model can forecast the most likely next-day transition for each pixel using current burn-state maps and forecasted weather.
+
+\section{Step 9: Choose an Initial Interpretable Model Class}
+
+Because the goal is transparency, the initial model should be interpretable and suitable for tabular transition features. Candidate models include:
 
 \begin{itemize}
     \item multinomial logistic regression,
+    \item regularized multinomial regression,
     \item random forest,
     \item gradient boosted trees,
     \item XGBoost, LightGBM, or CatBoost.
 \end{itemize}
 
-These models allow rapid prototyping and provide interpretable feature importance. More complex models can be considered later, including convolutional neural networks, ConvLSTM models, temporal convolutional networks, U-Net-style raster-to-raster models, or graph neural networks.
+A gradient boosted tree model may be a strong initial choice because it can capture nonlinear relationships and interactions among burn-state history, neighborhood conditions, fuels, topography, and weather while still allowing feature importance and partial dependence analysis.
 
-\subsection*{Step 10: Validate with Spatial and Temporal Holdouts}
+Deep-learning approaches such as CNNs, ConvLSTMs, or U-Net-style raster-to-raster models can be considered later as comparison models. However, they are not the primary focus of this project because the goal is not only prediction accuracy but also transparent explanation of burn-state transitions.
 
-Avoid random splitting of pixel-days because nearby pixels and adjacent dates are strongly autocorrelated. Random splits can produce overly optimistic accuracy.
+\section{Step 10: Validate Using Spatial and Temporal Holdouts}
+
+Validation should be designed carefully because nearby pixels and adjacent days are strongly autocorrelated. Randomly splitting pixel-day observations can lead to overly optimistic estimates of model performance.
 
 Better validation strategies include:
 
@@ -217,37 +361,38 @@ Better validation strategies include:
     \item holding out fire-year combinations.
 \end{itemize}
 
-Evaluation should include per-class precision and recall, confusion matrices, transition-specific accuracy, and visual comparison between observed and predicted burn-state maps.
+Evaluation should focus not only on overall classification accuracy but also on transition-specific performance. Important metrics include:
+
+\begin{itemize}
+    \item confusion matrix of predicted versus observed transitions,
+    \item per-transition precision and recall,
+    \item performance for rare but important transitions such as OU $\rightarrow$ IH,
+    \item map-based comparison of observed and predicted transition patterns,
+    \item transition probabilities summarized by fuel type, topography, and weather condition.
+\end{itemize}
 
 \section{Recommended Starting Formulation}
 
-A recommended initial formulation is:
+A recommended starting formulation is a pixel-day transition table. Each row represents one pixel on one day. The target is the observed transition from day $t$ to day $t+1$:
 
 \[
-Y_{i,t} = f(
-Y_{i,t-1:t-3},
-Y_{N(i),t-1:t-3},
-X_i,
-W_{i,t-1:t-3}
-).
+T_{i,t \rightarrow t+1} = Y_{i,t} \rightarrow Y_{i,t+1}.
 \]
 
-A practical implementation would use a pixel-day table where each row represents one pixel on one day. The target is either the burn state at day $t$ or the transition from day $t-1$ to day $t$.
-
-\subsection*{Example Feature Table}
+The predictors include the current and recent burn states of the focal pixel, the current and recent burn states of neighboring pixels, static environmental covariates, observed weather through day $t$, and forecasted weather for day $t+1$.
 
 \begin{table}[h]
 \centering
-\caption{Example pixel-day training table.}
+\caption{Example pixel-day transition training table.}
 \begin{tabular}{llllll}
 \toprule
-Pixel & Day & State History & Neighborhood Features & Environment/Weather & Target \\
+Pixel & Day & Focal History & Neighborhood History & Covariates & Target \\
 \midrule
-$i$ & $t$ & $Y_{i,t-1:t-3}$ & counts by state & fuel, slope, wind, RH & $Y_{i,t}$ \\
+$i$ & $t$ & $Y_{i,t:t-k}$ & $Y_{N(i),t:t-k}$ & $X_i, W^{obs}, W^{fcst}$ & $Y_{i,t} \rightarrow Y_{i,t+1}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-This formulation provides an interpretable and defensible baseline before moving to more complex deep-learning or raster-to-raster approaches.
+This transition-based formulation provides a transparent framework for understanding how burn states evolve across a landscape. It also supports operational prediction because, during inference, the model can forecast the next-day transition of every pixel using the most recent burn-state map, recent observed weather, static landscape data, and forecasted weather for the next day.
 
 \end{document}
