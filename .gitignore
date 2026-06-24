@@ -19,7 +19,6 @@ out/
 *.sqlite
 *.jsonl
 *.geojson
-*.log
 *.tif
 *.tiff
 *.zip
